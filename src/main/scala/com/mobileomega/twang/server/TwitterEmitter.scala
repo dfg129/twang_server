@@ -9,6 +9,7 @@ import akka.stream.scaladsl2._
 import akka.util.{ ByteString, Timeout }
 import java.net.InetSocketAddress
 import scala.concurrent.duration._
+import scala.util.{ Failure, Success }
 
 object TwitterEmitter {
   def main(args: Array[String]): Unit = {
@@ -47,31 +48,37 @@ object TwitterEmitter {
     }
 
   }
-  
+
   def client(system: ActorSystem, serverAddress: InetSocketAddress): Unit = {
     implicit val sys = system
     import system.dispatcher
     implicit val materializer = FlowMaterializer()
     implicit val timeout = Timeout(5.seconds)
-    
+
     val clientFuture = IO(StreamTcp) ? StreamTcp.Connect(serverAddress)
     clientFuture.onSuccess {
-      case clientBinding: StreamTcp.OutgoingTcpConnection => 
+      case clientBinding: StreamTcp.OutgoingTcpConnection =>
         val testInput = ('a' to 'z').map(ByteString(_))
         Source(testInput).connect(Sink(clientBinding.outputStream)).run()
-        
+
         Source(clientBinding.inputStream).fold(Vector.empty[Char]) { (acc, in) => acc ++ in.map(_.asInstanceOf[Char]) }.
-           onComplete {
-          case Susccess(result) => 
-            println(s"Result:" + result.mkString("[", ", ", "]"))
-            println("Shutting down the client")
-            system.shutdown()
-        }
-          
-        }
-          
-        }
+          onComplete {
+            case Success(result) =>
+              println(s"Result: " + result.mkString("[", ", ", "]"))
+              println("Shutting down the client")
+              system.shutdown()
+            case Failure(e) =>
+              println("failure: " + e.getMessage)
+              system.shutdown()
+          }
     }
+
+    clientFuture.onFailure {
+      case e: Throwable =>
+        println(s"Client could not connect to $serverAddress: ${e.getMessage}")
+        system.shutdown()
+    }
+
   }
 
 }
