@@ -49,6 +49,7 @@ object TwitterEmitter {
 
   }
 
+  // comment on client
   def client(system: ActorSystem, serverAddress: InetSocketAddress): Unit = {
     implicit val sys = system
     import system.dispatcher
