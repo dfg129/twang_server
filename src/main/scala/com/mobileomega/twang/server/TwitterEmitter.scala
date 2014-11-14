@@ -38,6 +38,7 @@ object TwitterEmitter {
 
         Source(serverBinding.connectionStream).foreach { conn =>
           println("Client connected from: " + conn.remoteAddress)
+          conn.inputStream.subscribe(conn.outputStream)
         }
     }
 
@@ -51,6 +52,7 @@ object TwitterEmitter {
 
   // comment on client
   def client(system: ActorSystem, serverAddress: InetSocketAddress): Unit = {
+    val serverAddress2 = new InetSocketAddress("www.ibm.com", 80);
     implicit val sys = system
     import system.dispatcher
     implicit val materializer = FlowMaterializer()
